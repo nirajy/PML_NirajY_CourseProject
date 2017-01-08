@@ -1,0 +1,101 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Niraj Yadav"
+date: "January 8, 2017"
+output: html_document
+---
+First let's download and load data files
+
+```{r}
+train_URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test_URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+#download.file(train_URL,destfile = "./data/pml-training.csv")
+#download.file(test_URL,destfile = "./data/pml-test.csv")
+train <- read.csv("./data/pml-training.csv",na.strings=c("NA","#DIV/0!", ""))
+test <- read.csv("./data/pml-test.csv",na.strings=c("NA","#DIV/0!", ""))
+```
+
+Let's look at data
+```{r}
+dim(train)
+dim(test)
+head(train)
+```
+Based on looking at data let's do some cleanup.
+Delete columns with all missing values
+```{r}
+train<-train[,colSums(is.na(train)) == 0]
+test <-test[,colSums(is.na(test)) == 0]
+```
+Remove irrelevant variables for this project. Column 1 to 7. i.e. user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, and  num_window 
+
+```{r}
+train   <-train[,-c(1:7)]
+test <- test[,-c(1:7)]
+```
+This is our final data set after removing noise
+
+```{r}
+dim(train)
+dim(test)
+head(train)
+```
+
+Let's partition training data in to training and test sample for prediction algorithm.
+```{r}
+library(caret)
+set.seed(33213)
+subData <- createDataPartition(y=train$classe, p=0.75, list=FALSE)
+S_Training <- train[subData, ] 
+S_Testing <- train[-subData, ]
+dim(S_Training)
+dim(S_Testing)
+```
+
+Let's look at our data. Below plot shows frequency of our predictor variable in training set
+```{r}
+plot(S_Training$classe,xlab="Classe Data",ylab="Frequency",main="Classes Frequency Plot")
+```
+It shows that data has classe A with highest frequency whereas B,C,D and E are in same frequency.
+
+Let's start prediction. We will do our first prediction using random forest.
+
+```{r}
+library(randomForest)
+model_rf <- randomForest(classe ~. , data=S_Training, method="class")
+predict_rf <- predict(model_rf, S_Testing, type = "class")
+confusionMatrix(predict_rf, S_Testing$classe)
+```
+Above data shows accurracy of prediction with random forest model.
+
+
+Let's model same data with Decision based tree
+```{r}
+library(rattle)
+model_rpart <- train(classe ~ ., data=S_Training, method="rpart")
+predict_rpart <- predict(model_rpart, S_Testing)
+```
+
+Let's plot decision tree model to visualize it.
+```{r}
+library(rattle)
+fancyRpartPlot(model_rpart$finalModel)
+```
+
+Let's look at accurracy of prediction for Decision tree based model
+
+```{r}
+confusionMatrix(predict_rpart, S_Testing$classe)
+```
+
+##Conclusion
+Based on above Model Random Forest algorithm did better than Decision Trees. Accurracy of random forest is much better.
+Accuracy for Random Forest model: 0.9953 (95% CI: (0.993, 0.997))
+Accurracy for Decision Tree model: 0.4965 (95% CI: (0.4824, 0.5106)) 
+
+Let's run this on our test data
+
+```{r}
+predict_testrf <- predict(model_rf,test)
+predict_testrf
+```
